@@ -1,92 +1,99 @@
 # typst_flutter
 
-A new Flutter FFI plugin project.
+A Flutter FFI plugin for compiling [Typst](https://typst.app/) templates to PDF.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter
-[FFI plugin](https://flutter.dev/to/ffi-package),
-a specialized package that includes native code directly invoked with Dart FFI.
+- Compile Typst templates to PDF
+- Pass dynamic data via `sys.inputs`
+- Load fonts from Flutter assets
+- Load template files from assets
+- Works on Android, iOS, Linux, macOS, Windows, and Web
 
-## Project structure
+## Usage
 
-This template uses the following structure:
+```dart
+import 'package:typst_flutter/typst_flutter.dart';
 
-* `src`: Contains the native source code, and a CmakeFile.txt file for building
-  that source code into a dynamic library.
+void main() async {
+  final pdf = await TypstFlutter.compile(
+    template: '''
+= Hello, #sys.inputs.at("name", default: "World")!
 
-* `lib`: Contains the Dart code that defines the API of the plugin, and which
-  calls into the native code using `dart:ffi`.
-
-* platform folders (`android`, `ios`, `windows`, etc.): Contains the build files
-  for building and bundling the native code library with the platform application.
-
-## Building and bundling native code
-
-The `pubspec.yaml` specifies FFI plugins as follows:
-
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        ffiPlugin: true
+This is a Typst document compiled in Flutter.
+''',
+    inputs: {'name': 'Flutter'},
+  );
+  
+  // pdf is Uint8List with PDF bytes
+}
 ```
 
-This configuration invokes the native build for the various target platforms
-and bundles the binaries in Flutter applications using these FFI plugins.
+### Loading from Assets
 
-This can be combined with dartPluginClass, such as when FFI is used for the
-implementation of one platform in a federated plugin:
-
-```yaml
-  plugin:
-    implements: some_other_plugin
-    platforms:
-      some_platform:
-        dartPluginClass: SomeClass
-        ffiPlugin: true
+```dart
+final pdf = await TypstFlutter.compileAsset(
+  assetPath: 'assets/templates/my_template.typ',
+  inputs: {'title': 'My Report'},
+);
 ```
 
-A plugin can have both FFI and method channels:
+### Adding Custom Fonts
 
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        pluginClass: SomeName
-        ffiPlugin: true
+```dart
+final pdf = await TypstFlutter.compile(
+  template: '''
+#set text(font: "Roboto")
+= Hello World!
+''',
+  fontAssets: ['assets/fonts/Roboto-Regular.ttf'],
+);
 ```
 
-The native build systems that are invoked by FFI (and method channel) plugins are:
+## API
 
-* For Android: Gradle, which invokes the Android NDK for native builds.
-  * See the documentation in android/build.gradle.
-* For iOS and MacOS: Xcode, via CocoaPods.
-  * See the documentation in ios/typst_flutter.podspec.
-  * See the documentation in macos/typst_flutter.podspec.
-* For Linux and Windows: CMake.
-  * See the documentation in linux/CMakeLists.txt.
-  * See the documentation in windows/CMakeLists.txt.
+### `TypstFlutter.compile()`
 
-## Binding to native code
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `template` | `String` | Typst template content |
+| `inputs` | `Map<String, String>?` | Data injected as `sys.inputs` |
+| `fontAssets` | `List<String>` | Asset paths for fonts |
+| `extraFiles` | `List<(path, bytes)>` | Extra files (images, sub-templates) |
 
-To use the native code, bindings in Dart are needed.
-To avoid writing these by hand, they are generated from the header file
-(`src/typst_flutter.h`) by `package:ffigen`.
-Regenerate the bindings by running `dart run ffigen --config ffigen.yaml`.
+Returns `Uint8List` with PDF bytes.
 
-## Invoking native code
+### `TypstFlutter.compileAsset()`
 
-Very short-running native functions can be directly invoked from any isolate.
-For example, see `sum` in `lib/typst_flutter.dart`.
+Same as `compile()` but loads the template from a Flutter asset.
 
-Longer-running functions should be invoked on a helper isolate to avoid
-dropping frames in Flutter applications.
-For example, see `sumAsync` in `lib/typst_flutter.dart`.
+### `TypstFlutter.typstVersion()`
 
-## Flutter help
+Returns the Typst version as string.
 
-For help getting started with Flutter, view our
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Example
 
+See the `example/` directory for a complete demo app with:
+- Live Typst editor
+- PDF preview using pdfrx
+- Asset loading demonstration
+- Integration tests
+
+## Requirements
+
+- Flutter 3.x
+- Rust toolchain (for building the plugin)
+
+## Building
+
+```bash
+# Build debug
+make build
+
+# Run example
+make run-example-linux
+```
+
+## License
+
+MIT
