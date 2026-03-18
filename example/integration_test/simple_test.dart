@@ -6,24 +6,13 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await RustLib.init();
+    await TypstFlutter.init();
   });
-
-  // ── typstVersion ───────────────────────────────────────────────────────────
-
-  group('TypstFlutter.typstVersion()', () {
-    test('returns semver formatted string', () async {
-      final version = await TypstFlutter.typstVersion();
-      expect(version, isNotEmpty);
-      expect(version, matches(RegExp(r'^\d+\.\d+\.\d+$')));
-    });
-  });
-
   // ── compile ───────────────────────────────────────────────────────────────
 
-  group('TypstFlutter.compile()', () {
+  group('TypstFlutter.compileString()', () {
     test('returns valid PDF with simple template', () async {
-      final pdf = await TypstFlutter.compile(template: '= Hello Typst!');
+      final pdf = await TypstFlutter.compileString(template: '= Hello Typst!');
 
       expect(pdf, isNotEmpty);
       // Magic bytes %PDF
@@ -34,7 +23,7 @@ void main() {
       const template = '''
 = #sys.inputs.at("title", default: "")
 ''';
-      final pdf = await TypstFlutter.compile(
+      final pdf = await TypstFlutter.compileString(
         template: template,
         inputs: {'title': 'Test Report'},
       );
@@ -44,7 +33,7 @@ void main() {
     });
 
     test('null inputs does not throw', () async {
-      final pdf = await TypstFlutter.compile(
+      final pdf = await TypstFlutter.compileString(
         template: '= Fixed Title',
         inputs: null,
       );
@@ -57,23 +46,23 @@ void main() {
 
 Author: #sys.inputs.at("author", default: "")
 ''';
-      final pdf = await TypstFlutter.compile(
+      final pdf = await TypstFlutter.compileString(
         template: template,
         inputs: {'name': 'My Document', 'author': 'John'},
       );
       expect(pdf, isNotEmpty);
     });
 
-    test('empty fontAssets does not throw', () async {
-      final pdf = await TypstFlutter.compile(
+    test('empty fonts does not throw', () async {
+      final pdf = await TypstFlutter.compileString(
         template: '= No extra fonts',
-        fontAssets: [],
+        fonts: [],
       );
       expect(pdf, isNotEmpty);
     });
 
     test('empty extraFiles does not throw', () async {
-      final pdf = await TypstFlutter.compile(
+      final pdf = await TypstFlutter.compileString(
         template: '= No extra files',
         extraFiles: [],
       );
@@ -82,14 +71,14 @@ Author: #sys.inputs.at("author", default: "")
 
     test('invalid Typst template throws exception', () async {
       await expectLater(
-        () => TypstFlutter.compile(template: '#nonexistent_function()'),
+        () => TypstFlutter.compileString(template: '#nonexistent_function()'),
         throwsException,
       );
     });
 
     test('larger template produces larger PDF', () async {
-      final small = await TypstFlutter.compile(template: '= A');
-      final large = await TypstFlutter.compile(
+      final small = await TypstFlutter.compileString(template: '= A');
+      final large = await TypstFlutter.compileString(
         template: List.generate(
           30,
           (i) => '== Section $i\n\n${'Paragraph text for section $i. ' * 10}\n',
@@ -116,7 +105,7 @@ Author: #sys.inputs.at("author", default: "")
       final pdf = await TypstFlutter.compileAsset(
         assetPath: 'assets/templates/test.typ',
         inputs: {'author': 'Test Author', 'date': '2024-01-01'},
-        fontAssets: const [],
+        fonts: const [],
       );
       expect(pdf, isNotEmpty);
       expect(pdf.sublist(0, 4), equals([0x25, 0x50, 0x44, 0x46]));

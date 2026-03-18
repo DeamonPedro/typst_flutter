@@ -80,26 +80,7 @@ pub fn compile(
     })
 }
 
-/// Simplified version — no extra fonts or files.
-/// Uses system fonts (typst-kit-fonts feature).
-#[frb]
-pub fn compile_simple(
-    template: String,
-    inputs: Option<HashMap<String, String>>,
-) -> Result<CompileResult> {
-    compile(template, inputs, vec![], vec![])
-}
-
-/// Returns the version of this plugin's own crate (set in Cargo.toml).
-/// Fix 4: typst_as_lib::TYPST_VERSION does not exist —
-/// use env! to get our own crate version at compile time instead.
-#[frb]
-pub fn typst_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
-}
-
 // ── Tests ──────────────────────────────────────────────────────────────────
-#[cfg(test)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,13 +105,6 @@ mod tests {
         let inputs = HashMap::from([("titulo".to_string(), "Test".to_string())]);
 
         let result = compile(template, Some(inputs), vec![], vec![]).unwrap();
-
-        assert_eq!(&result.pdf_bytes[..4], b"%PDF");
-    }
-
-    #[test]
-    fn test_compile_simple_shortcut() {
-        let result = compile_simple("= Hello".to_string(), None).unwrap();
 
         assert_eq!(&result.pdf_bytes[..4], b"%PDF");
     }

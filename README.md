@@ -13,10 +13,14 @@ A Flutter FFI plugin for compiling [Typst](https://typst.app/) templates to PDF.
 ## Usage
 
 ```dart
+import 'package:flutter/material.dart';
 import 'package:typst_flutter/typst_flutter.dart';
 
 void main() async {
-  final pdf = await TypstFlutter.compile(
+  WidgetsFlutterBinding.ensureInitialized();
+  await TypstFlutter.init(); // Requires initialization before use
+
+  final pdf = await TypstFlutter.compileString(
     template: '''
 = Hello, #sys.inputs.at("name", default: "World")!
 
@@ -25,7 +29,7 @@ This is a Typst document compiled in Flutter.
     inputs: {'name': 'Flutter'},
   );
   
-  // pdf is Uint8List with PDF bytes
+  // pdf is a Uint8List containing the PDF bytes
 }
 ```
 
@@ -38,38 +42,40 @@ final pdf = await TypstFlutter.compileAsset(
 );
 ```
 
-### Adding Custom Fonts
+### Adding Custom Fonts & Extra Files
 
 ```dart
-final pdf = await TypstFlutter.compile(
+final pdf = await TypstFlutter.compileString(
   template: '''
 #set text(font: "Roboto")
+#image("logo.png")
 = Hello World!
 ''',
-  fontAssets: ['assets/fonts/Roboto-Regular.ttf'],
+  fonts: [FontSource.asset('assets/fonts/Roboto-Regular.ttf')],
+  extraFiles: [ExtraFileSource.bytes("logo.png", imageBytes)],
 );
 ```
 
 ## API
 
-### `TypstFlutter.compile()`
+### `TypstFlutter.compileString()`
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `template` | `String` | Typst template content |
 | `inputs` | `Map<String, String>?` | Data injected as `sys.inputs` |
-| `fontAssets` | `List<String>` | Asset paths for fonts |
-| `extraFiles` | `List<(path, bytes)>` | Extra files (images, sub-templates) |
+| `fonts` | `List<FontSource>` | Custom fonts (e.g., `FontSource.asset(...)`) |
+| `extraFiles` | `List<ExtraFileSource>` | Additional files like images or sub-templates |
 
-Returns `Uint8List` with PDF bytes.
+Returns a `Future<Uint8List>` containing the PDF bytes.
 
 ### `TypstFlutter.compileAsset()`
 
-Same as `compile()` but loads the template from a Flutter asset.
+Behaves identically to `compileString()`, but accepts an `assetPath` argument to load the Typst template directly from a Flutter asset.
 
-### `TypstFlutter.typstVersion()`
+### `TypstFlutter.compileFile()`
 
-Returns the Typst version as string.
+Behaves identically to `compileString()`, but accepts a `file` argument of type `File` (`dart:io`) to load the template directly from the file system.
 
 ## Example
 

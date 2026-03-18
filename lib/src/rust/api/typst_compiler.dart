@@ -24,22 +24,6 @@ Future<CompileResult> compile({
   extraFiles: extraFiles,
 );
 
-/// Simplified version — no extra fonts or files.
-/// Uses system fonts (typst-kit-fonts feature).
-Future<CompileResult> compileSimple({
-  required String template,
-  Map<String, String>? inputs,
-}) => RustLib.instance.api.crateApiTypstCompilerCompileSimple(
-  template: template,
-  inputs: inputs,
-);
-
-/// Returns the version of this plugin's own crate (set in Cargo.toml).
-/// Fix 4: typst_as_lib::TYPST_VERSION does not exist —
-/// use env! to get our own crate version at compile time instead.
-Future<String> typstVersion() =>
-    RustLib.instance.api.crateApiTypstCompilerTypstVersion();
-
 /// Result of a successful compilation.
 class CompileResult {
   /// Generated PDF bytes — ready to save or display.

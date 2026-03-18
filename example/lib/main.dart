@@ -7,7 +7,7 @@ import 'package:typst_flutter/typst_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await RustLib.init();
+  await TypstFlutter.init();
   runApp(const TypstEditorApp());
 }
 
@@ -90,10 +90,10 @@ The document was compiled successfully.
         inputs = Map<String, String>.from(jsonDecode(_inputsController.text));
       }
 
-      final pdf = await TypstFlutter.compile(
+      final pdf = await TypstFlutter.compileString(
         template: _templateController.text,
         inputs: inputs,
-        fontAssets: ['assets/fonts/Roboto-Regular.ttf'],
+        fonts: [FontSource.asset('assets/fonts/Roboto-Regular.ttf')],
       );
 
       setState(() {

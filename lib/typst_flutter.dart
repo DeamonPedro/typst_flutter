@@ -1,4 +1,5 @@
 library;
 
-export 'src/rust/frb_generated.dart' show RustLib;
+export 'src/extra_file_source.dart';
+export 'src/font_source.dart';
 export 'src/typst_flutter.dart';
