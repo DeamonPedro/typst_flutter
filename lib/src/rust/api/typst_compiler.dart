@@ -6,6 +6,8 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `extract_input_field`, `is_sys_inputs`, `walk_for_inputs`
+
 /// Compiles a Typst template and returns the PDF bytes.
 ///
 /// - `template`   : main .typ file content (UTF-8)
@@ -23,6 +25,11 @@ Future<CompileResult> compile({
   fonts: fonts,
   extraFiles: extraFiles,
 );
+
+/// Discovers all `sys.inputs.at(...)` calls in a Typst template via AST analysis.
+/// No compilation needed — pure syntax analysis.
+Future<List<DiscoveredInput>> discoverInputs({required String source}) =>
+    RustLib.instance.api.crateApiTypstCompilerDiscoverInputs(source: source);
 
 /// Result of a successful compilation.
 class CompileResult {
@@ -44,6 +51,32 @@ class CompileResult {
           runtimeType == other.runtimeType &&
           pdfBytes == other.pdfBytes &&
           warnings == other.warnings;
+}
+
+/// A discovered input field from a Typst template.
+class DiscoveredInput {
+  final String name;
+  final bool required_;
+  final String? defaultValue;
+
+  const DiscoveredInput({
+    required this.name,
+    required this.required_,
+    this.defaultValue,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^ required_.hashCode ^ defaultValue.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiscoveredInput &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          required_ == other.required_ &&
+          defaultValue == other.defaultValue;
 }
 
 /// Extra file (image, .typ include) for the compiler.

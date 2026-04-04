@@ -80,6 +80,91 @@ pub fn compile(
     })
 }
 
+// ── discover_inputs ────────────────────────────────────────────────────────
+
+use typst_syntax::{ast, ast::AstNode, SyntaxNode};
+
+/// A discovered input field from a Typst template.
+pub struct DiscoveredInput {
+    pub name: String,
+    pub required: bool,
+    pub default_value: Option<String>,
+}
+
+/// Discovers all `sys.inputs.at(...)` calls in a Typst template via AST analysis.
+/// No compilation needed — pure syntax analysis.
+#[frb]
+pub fn discover_inputs(source: String) -> Vec<DiscoveredInput> {
+    let root = typst_syntax::parse(&source);
+    let mut fields = Vec::new();
+    walk_for_inputs(&root, &mut fields);
+    // Deduplicate by name, keep first occurrence
+    let mut seen = std::collections::HashSet::new();
+    fields.retain(|f| seen.insert(f.name.clone()));
+    fields
+}
+
+fn walk_for_inputs(node: &SyntaxNode, fields: &mut Vec<DiscoveredInput>) {
+    if let Some(call) = node.cast::<ast::FuncCall>() {
+        if let ast::Expr::FieldAccess(access) = call.callee() {
+            if access.field().as_str() == "at" {
+                if is_sys_inputs(access.target()) {
+                    extract_input_field(call.args(), fields);
+                }
+            }
+        }
+    }
+    for child in node.children() {
+        walk_for_inputs(child, fields);
+    }
+}
+
+fn is_sys_inputs(expr: ast::Expr) -> bool {
+    if let ast::Expr::FieldAccess(access) = expr {
+        if access.field().as_str() == "inputs" {
+            if let ast::Expr::Ident(ident) = access.target() {
+                return ident.as_str() == "sys";
+            }
+        }
+    }
+    false
+}
+
+fn extract_input_field(args: ast::Args, fields: &mut Vec<DiscoveredInput>) {
+    let mut name = None;
+    let mut default_value = None;
+
+    for arg in args.items() {
+        match arg {
+            ast::Arg::Pos(expr) => {
+                if name.is_none() {
+                    if let ast::Expr::Str(s) = expr {
+                        name = Some(s.get().to_string());
+                    }
+                }
+            }
+            ast::Arg::Named(named) => {
+                if named.name().as_str() == "default" {
+                    if let ast::Expr::Str(s) = named.expr() {
+                        default_value = Some(s.get().to_string());
+                    } else {
+                        default_value = Some(named.expr().to_untyped().text().to_string());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(field_name) = name {
+        fields.push(DiscoveredInput {
+            name: field_name,
+            required: default_value.is_none(),
+            default_value,
+        });
+    }
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 #[cfg(test)]
 mod tests {
@@ -128,5 +213,49 @@ mod tests {
         let large = compile(large_template, None, vec![], vec![]).unwrap();
 
         assert!(large.pdf_bytes.len() > small.pdf_bytes.len());
+    }
+
+    #[test]
+    fn test_discover_inputs_basic() {
+        let source = r#"
+#let name = sys.inputs.at("sender_name")
+#let city = sys.inputs.at("sender_city")
+#let closing = sys.inputs.at("closing", default: "MfG")
+"#;
+        let inputs = discover_inputs(source.to_string());
+        assert_eq!(inputs.len(), 3);
+        assert_eq!(inputs[0].name, "sender_name");
+        assert!(inputs[0].required);
+        assert_eq!(inputs[2].name, "closing");
+        assert!(!inputs[2].required);
+        assert_eq!(inputs[2].default_value, Some("MfG".to_string()));
+    }
+
+    #[test]
+    fn test_discover_inputs_deduplication() {
+        let source = r#"
+#let a = sys.inputs.at("name")
+#let b = sys.inputs.at("name")
+"#;
+        let inputs = discover_inputs(source.to_string());
+        assert_eq!(inputs.len(), 1);
+    }
+
+    #[test]
+    fn test_discover_inputs_empty_template() {
+        let inputs = discover_inputs("= Hello World".to_string());
+        assert!(inputs.is_empty());
+    }
+
+    #[test]
+    fn test_discover_inputs_inline_usage() {
+        let source = r#"Hello #sys.inputs.at("name"), welcome to #sys.inputs.at("city", default: "Berlin")!"#;
+        let inputs = discover_inputs(source.to_string());
+        assert_eq!(inputs.len(), 2);
+        assert_eq!(inputs[0].name, "name");
+        assert!(inputs[0].required);
+        assert_eq!(inputs[1].name, "city");
+        assert!(!inputs[1].required);
+        assert_eq!(inputs[1].default_value, Some("Berlin".to_string()));
     }
 }
