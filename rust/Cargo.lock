@@ -2991,6 +2991,7 @@ dependencies = [
  "typst-as-lib",
  "typst-library",
  "typst-pdf",
+ "typst-syntax",
 ]
 
 [[package]]
